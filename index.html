@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([51.505, -0.09], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var ws = new WebSocket("ws://localhost:8889/ws");
+
+        // Define custom icons
+        var icons = {
+            "device1": L.icon({
+                iconUrl: 'icons/map1.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            }),
+            "default": L.icon({
+                iconUrl: 'icons/map.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            })
+        };
+
+        var deviceMarkers = {};
+
+        ws.onmessage = function(event) {
+            var location = JSON.parse(event.data);
+            var latlng = [location.latitude, location.longitude];
+            
+            // Get the icon for the device
+            var icon = icons[location.device_id] || icons['default'];
+
+            if (deviceMarkers[location.device_id]) {
+                // Update existing marker
+                deviceMarkers[location.device_id].setLatLng(latlng);
+                deviceMarkers[location.device_id].setPopupContent(`<b>${location.device_name || "Unknown"}</b><br>${location.device_model || "Unknown"}`);
+            } else {
+                // Add new marker
+                var marker = L.marker(latlng, { icon: icon }).addTo(map)
+                    .bindPopup(`<b>${location.device_name || "Unknown"}</b><br>${location.device_model || "Unknown"}`)
+                    .openPopup();
+                deviceMarkers[location.device_id] = marker;
+            }
+
+            map.setView(latlng, 13);
+        };
+    </script>
+</body>
+</html>
